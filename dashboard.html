@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Recipe Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Recipe Costing</p>
+        <h1>Dashboard</h1>
+      </div>
+      <nav class="page-nav" aria-label="Main navigation">
+        <a class="nav-link active" href="dashboard.html">Dashboard</a>
+        <a class="nav-link" href="index.html">Recipes</a>
+      </nav>
+    </header>
+
+    <main class="landing-layout">
+      <section class="panel landing-panel" aria-labelledby="landingTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Stored Recipes</p>
+            <h2 id="landingTitle">Recipe Library</h2>
+          </div>
+          <p id="landingRecipeCount" class="muted">0 recipes</p>
+        </div>
+        <div id="landingRecipeGrid" class="landing-recipe-grid" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

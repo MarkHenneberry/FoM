@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Recipes</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Recipe Costing</p>
+        <h1>Recipes</h1>
+      </div>
+      <nav class="page-nav" aria-label="Main navigation">
+        <a class="nav-link" href="dashboard.html">Dashboard</a>
+        <a class="nav-link active" href="index.html">Recipes</a>
+      </nav>
+      <button class="secondary-button" id="newRecipeButton" type="button">New Recipe</button>
+    </header>
+
+    <main class="layout">
+      <section class="panel dashboard-panel" aria-labelledby="dashboardTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Stored Recipes</p>
+            <h2 id="dashboardTitle">Dashboard</h2>
+          </div>
+          <p id="recipeCount" class="muted">0 recipes</p>
+        </div>
+        <div id="recipeDashboard" class="recipe-list" aria-live="polite"></div>
+      </section>
+
+      <section class="workspace">
+        <form class="panel builder-panel" id="recipeForm">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Recipes</p>
+              <h2>Recipe Details</h2>
+            </div>
+            <div class="form-actions">
+              <button class="secondary-button" id="deleteRecipeButton" type="button">Delete</button>
+              <button class="primary-button" type="submit">Save Recipe</button>
+            </div>
+          </div>
+
+          <div class="recipe-meta">
+            <label>
+              Recipe name
+              <input id="recipeName" name="recipeName" type="text" placeholder="Chicken rice bowls">
+            </label>
+            <label>
+              Servings per recipe
+              <input id="recipeServings" name="recipeServings" type="number" min="0.01" step="0.01" value="4" required>
+            </label>
+          </div>
+
+          <div class="table-header">
+            <h3>Ingredients</h3>
+            <div class="ingredient-actions">
+              <label class="inline-label">
+                Saved ingredient
+                <select id="savedIngredientSelect">
+                  <option value="">No saved ingredients</option>
+                </select>
+              </label>
+              <button class="secondary-button" id="addSavedIngredientButton" type="button">Add Saved Ingredient</button>
+              <button class="secondary-button" id="addIngredientButton" type="button">Add New Ingredient</button>
+            </div>
+          </div>
+
+          <div class="ingredient-table-wrap">
+            <table class="ingredient-table">
+              <thead>
+                <tr>
+                  <th scope="col">Ingredient</th>
+                  <th scope="col">Amount (g)</th>
+                  <th scope="col">Price / 100g</th>
+                  <th scope="col">Calories / 100g</th>
+                  <th scope="col">Protein / 100g</th>
+                  <th scope="col">Carbs / 100g</th>
+                  <th scope="col">Fat / 100g</th>
+                  <th scope="col">Save</th>
+                  <th scope="col">Remove</th>
+                </tr>
+              </thead>
+              <tbody id="ingredientRows"></tbody>
+            </table>
+          </div>
+        </form>
+
+        <section class="panel output-panel" aria-labelledby="outputTitle">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Totals</p>
+              <h2 id="outputTitle">Recipe Output</h2>
+            </div>
+          </div>
+
+          <div class="output-groups">
+            <section class="output-group" aria-labelledby="recipeTotalsTitle">
+              <h3 id="recipeTotalsTitle">Per Recipe</h3>
+              <div class="summary-grid" id="recipeTotalsGrid"></div>
+            </section>
+            <section class="output-group" aria-labelledby="servingTotalsTitle">
+              <h3 id="servingTotalsTitle">Per Serving</h3>
+              <div class="summary-grid" id="servingTotalsGrid"></div>
+            </section>
+          </div>
+
+          <section class="adjust-section" aria-labelledby="scalerTitle">
+            <div class="subsection-heading">
+              <div>
+                <p class="eyebrow">Scale</p>
+                <h3 id="scalerTitle">Adjust Serving</h3>
+              </div>
+              <button class="secondary-button" id="resetScaleButton" type="button">Reset</button>
+            </div>
+
+            <div class="scale-controls">
+              <label>
+                Servings
+                <input id="targetServings" type="number" min="1" step="1">
+              </label>
+              <label>
+                Grams per serving
+                <input id="targetServingGrams" type="number" min="0" step="1">
+              </label>
+            </div>
+            <p class="muted" id="scaleHelp">Change either value to see the ingredient amounts needed for the new batch.</p>
+            <div class="scaled-table-wrap">
+              <table class="scaled-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Ingredient</th>
+                    <th scope="col">Amount</th>
+                  </tr>
+                </thead>
+                <tbody id="scaledRows"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <template id="ingredientRowTemplate">
+      <tr>
+        <td>
+          <input class="ingredient-name" type="text" list="savedIngredientNames" placeholder="Ingredient">
+        </td>
+        <td>
+          <input class="ingredient-amount" type="number" min="0" step="0.01" placeholder="0">
+        </td>
+        <td>
+          <input class="ingredient-price" type="number" min="0" step="0.01" placeholder="Optional">
+        </td>
+        <td>
+          <input class="ingredient-calories" type="number" min="0" step="0.01" placeholder="0">
+        </td>
+        <td>
+          <input class="ingredient-protein" type="number" min="0" step="0.01" placeholder="0">
+        </td>
+        <td>
+          <input class="ingredient-carbs" type="number" min="0" step="0.01" placeholder="0">
+        </td>
+        <td>
+          <input class="ingredient-fat" type="number" min="0" step="0.01" placeholder="0">
+        </td>
+        <td>
+          <button class="secondary-button save-ingredient" type="button">Save</button>
+        </td>
+        <td>
+          <button class="icon-button remove-ingredient" type="button" aria-label="Remove ingredient">x</button>
+        </td>
+      </tr>
+    </template>
+
+    <datalist id="savedIngredientNames"></datalist>
+    <script src="app.js"></script>
+  </body>
+</html>
