@@ -21,3 +21,5 @@ Use the `Save` button on an ingredient row to store that ingredient's per-100g p
 Typing the exact name of a saved ingredient in a new ingredient row will auto-fill its saved per-100g price and nutrition values.
 
 The scaling section can recalculate ingredient amounts by target servings or by target grams per serving.
+
+The dashboard includes a recipe combiner that lets saved recipes act as sub-recipes in a larger recipe. Add sub-recipes, set batch amounts, and review combined totals plus each sub-recipe breakdown.

@@ -19,6 +19,39 @@
     </header>
 
     <main class="landing-layout">
+      <section class="panel combiner-panel" aria-labelledby="combinerTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Combine</p>
+            <h2 id="combinerTitle">Recipe Combiner</h2>
+            <p class="muted">Build a larger recipe from saved recipes as sub-recipes.</p>
+            <p class="muted">Per serving adds one serving from each sub-recipe. Extra servings appear when a sub-recipe makes more than the combined serving count.</p>
+          </div>
+        </div>
+
+        <div class="combiner-controls">
+          <label class="inline-label">
+            Sub-recipe
+            <select id="combinerRecipeSelect">
+              <option value="">No saved recipes</option>
+            </select>
+          </label>
+          <button class="secondary-button" id="addSubRecipeButton" type="button">Add Sub-Recipe</button>
+        </div>
+
+        <div class="output-groups combiner-output-groups" aria-live="polite">
+          <section class="output-group" aria-labelledby="combinedRecipeTitle">
+            <h3 id="combinedRecipeTitle">Per Recipe</h3>
+            <div class="summary-grid" id="combinedRecipeGrid"></div>
+          </section>
+          <section class="output-group" aria-labelledby="combinedServingTitle">
+            <h3 id="combinedServingTitle">Per Serving</h3>
+            <div class="summary-grid" id="combinedServingGrid"></div>
+          </section>
+        </div>
+        <div class="sub-recipe-list" id="subRecipeRows" aria-live="polite"></div>
+      </section>
+
       <section class="panel landing-panel" aria-labelledby="landingTitle">
         <div class="section-heading">
           <div>

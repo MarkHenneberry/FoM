@@ -4,6 +4,7 @@ const INGREDIENT_STORAGE_KEY = "recipe-cost-nutrition-ingredients";
 const state = {
   recipes: [],
   savedIngredients: [],
+  subRecipes: [],
   selectedId: null,
   lastScaleInput: "servings",
   scaleFactor: 1,
@@ -32,6 +33,11 @@ const elements = {
   scaledRows: document.querySelector("#scaledRows"),
   landingRecipeGrid: document.querySelector("#landingRecipeGrid"),
   landingRecipeCount: document.querySelector("#landingRecipeCount"),
+  combinerRecipeSelect: document.querySelector("#combinerRecipeSelect"),
+  addSubRecipeButton: document.querySelector("#addSubRecipeButton"),
+  combinedRecipeGrid: document.querySelector("#combinedRecipeGrid"),
+  combinedServingGrid: document.querySelector("#combinedServingGrid"),
+  subRecipeRows: document.querySelector("#subRecipeRows"),
 };
 
 function createId() {
@@ -69,6 +75,14 @@ function formatInputNumber(value) {
   return Number(value.toFixed(2)).toString();
 }
 
+function formatPreciseInputNumber(value) {
+  if (!Number.isFinite(value)) {
+    return "";
+  }
+
+  return Number(value.toFixed(10)).toString();
+}
+
 function formatWholeInputNumber(value) {
   if (!Number.isFinite(value)) {
     return "";
@@ -81,10 +95,156 @@ function formatGrams(value) {
   return `${formatNumber(value)} g`;
 }
 
-function normalizeIngredient(ingredient = {}) {
+const UNIT_OPTIONS = [
+  { value: "g", label: "g" },
+  { value: "cup", label: "cup" },
+  { value: "tbsp", label: "tbsp" },
+  { value: "tsp", label: "tsp" },
+  { value: "oz", label: "oz" },
+  { value: "lb", label: "lb" },
+  { value: "piece", label: "piece" },
+];
+
+const FIXED_GRAMS_PER_UNIT = {
+  g: 1,
+  oz: 28.35,
+  lb: 453.59,
+};
+
+const NAMED_CONVERSIONS = [
+  { pattern: /\begg white\b/i, unit: "piece", gramsPerUnit: 33 },
+  { pattern: /\begg yolk\b/i, unit: "piece", gramsPerUnit: 17 },
+  { pattern: /\beggs?\b/i, unit: "piece", gramsPerUnit: 50 },
+  { pattern: /\bflour\b/i, unit: "cup", gramsPerUnit: 120 },
+  { pattern: /\bpowdered sugar\b|\bicing sugar\b|\bconfectioners sugar\b/i, unit: "cup", gramsPerUnit: 120 },
+  { pattern: /\bbrown sugar\b/i, unit: "cup", gramsPerUnit: 213 },
+  { pattern: /\bsugar\b/i, unit: "cup", gramsPerUnit: 200 },
+  { pattern: /\bbutter\b/i, unit: "tbsp", gramsPerUnit: 14.2 },
+  { pattern: /\bmilk\b|\bwater\b/i, unit: "cup", gramsPerUnit: 240 },
+  { pattern: /\bmaple syrup\b|\bsyrup\b|\bhoney\b/i, unit: "tbsp", gramsPerUnit: 20 },
+  { pattern: /\boil\b/i, unit: "tbsp", gramsPerUnit: 13.6 },
+  { pattern: /\bsalt\b/i, unit: "tsp", gramsPerUnit: 6 },
+  { pattern: /\bvanilla\b|\bextract\b/i, unit: "tsp", gramsPerUnit: 4.3 },
+  { pattern: /\bbaking powder\b|\bbaking soda\b/i, unit: "tsp", gramsPerUnit: 4.6 },
+];
+
+const GENERIC_GRAMS_PER_UNIT = {
+  cup: 240,
+  tbsp: 15,
+  tsp: 5,
+  piece: 1,
+};
+
+function conversionForIngredient(name = "", preferredUnit = "") {
+  const fixedValue = FIXED_GRAMS_PER_UNIT[preferredUnit];
+  if (fixedValue) {
+    return {
+      unit: preferredUnit,
+      gramsPerUnit: fixedValue,
+    };
+  }
+
+  const match = NAMED_CONVERSIONS.find((conversion) => conversion.pattern.test(name));
+  if (match) {
+    if (!preferredUnit || preferredUnit === match.unit) {
+      return {
+        unit: match.unit,
+        gramsPerUnit: match.gramsPerUnit,
+      };
+    }
+
+    const related = gramsPerUnitForRelatedMeasure(match.unit, match.gramsPerUnit, preferredUnit);
+    if (related) {
+      return {
+        unit: preferredUnit,
+        gramsPerUnit: related,
+      };
+    }
+  }
+
   return {
-    name: ingredient.name || "",
-    amount: Number(ingredient.amount) || 0,
+    unit: preferredUnit || "g",
+    gramsPerUnit: GENERIC_GRAMS_PER_UNIT[preferredUnit] || 1,
+  };
+}
+
+function gramsPerUnitForRelatedMeasure(sourceUnit, sourceGrams, targetUnit) {
+  const toCup = {
+    cup: 1,
+    tbsp: 16,
+    tsp: 48,
+  };
+
+  if (!toCup[sourceUnit] || !toCup[targetUnit]) {
+    return null;
+  }
+
+  const gramsPerCup = sourceGrams * toCup[sourceUnit];
+  return gramsPerCup / toCup[targetUnit];
+}
+
+function gramsFromQuantity(quantity, unit, gramsPerUnit) {
+  if (unit === "g") {
+    return quantity;
+  }
+
+  return quantity * Math.max(Number(gramsPerUnit) || 1, 0.01);
+}
+
+function displayQuantityFromGrams(grams, unit, gramsPerUnit) {
+  if (unit === "g") {
+    return grams;
+  }
+
+  return grams / Math.max(Number(gramsPerUnit) || 1, 0.01);
+}
+
+function unitLabel(unit, quantity, ingredientName = "") {
+  if (unit === "piece") {
+    const isSingle = Math.abs(quantity - 1) < 0.005;
+    if (/\beggs?\b/i.test(ingredientName)) {
+      return isSingle ? "egg" : "eggs";
+    }
+
+    return isSingle ? "piece" : "pieces";
+  }
+
+  if (unit === "cup") {
+    return Math.abs(quantity - 1) < 0.005 ? "cup" : "cups";
+  }
+
+  return unit;
+}
+
+function formatIngredientAmount(ingredient, grams) {
+  const unit = ingredient.unit || "g";
+  const gramsPerUnit = Number(ingredient.gramsPerUnit) || 1;
+
+  if (unit === "g") {
+    return formatGrams(grams);
+  }
+
+  const quantity = displayQuantityFromGrams(grams, unit, gramsPerUnit);
+  return `${formatNumber(quantity)} ${unitLabel(unit, quantity, ingredient.name)} (${formatGrams(grams)})`;
+}
+
+function normalizeIngredient(ingredient = {}) {
+  const name = ingredient.name || "";
+  const unit = ingredient.unit || "g";
+  const conversion = conversionForIngredient(name, unit);
+  const gramsPerUnit =
+    unit === "g" ? 1 : Math.max(Number(ingredient.gramsPerUnit) || conversion.gramsPerUnit || 1, 0.01);
+  const quantity =
+    ingredient.quantity === undefined || ingredient.quantity === null
+      ? displayQuantityFromGrams(Number(ingredient.amount) || 0, unit, gramsPerUnit)
+      : Number(ingredient.quantity) || 0;
+
+  return {
+    name,
+    quantity,
+    unit,
+    gramsPerUnit,
+    amount: gramsFromQuantity(quantity, unit, gramsPerUnit),
     price: ingredient.price === "" || ingredient.price === null ? null : Number(ingredient.price) || 0,
     calories: Number(ingredient.calories) || 0,
     protein: Number(ingredient.protein) || 0,
@@ -98,9 +258,17 @@ function emptyIngredient() {
 }
 
 function normalizeSavedIngredient(ingredient = {}) {
+  const name = ingredient.name || "";
+  const conversion = conversionForIngredient(name, ingredient.unit || "");
+  const unit = ingredient.unit || conversion.unit || "g";
+  const gramsPerUnit =
+    unit === "g" ? 1 : Math.max(Number(ingredient.gramsPerUnit) || conversion.gramsPerUnit || 1, 0.01);
+
   return {
     id: ingredient.id || createId(),
-    name: ingredient.name || "",
+    name,
+    unit,
+    gramsPerUnit,
     price: ingredient.price === "" || ingredient.price === null ? null : Number(ingredient.price) || 0,
     calories: Number(ingredient.calories) || 0,
     protein: Number(ingredient.protein) || 0,
@@ -114,6 +282,9 @@ function savedIngredientToRecipeIngredient(ingredient) {
   return normalizeIngredient({
     name: ingredient.name,
     amount: 0,
+    quantity: 0,
+    unit: ingredient.unit,
+    gramsPerUnit: ingredient.gramsPerUnit,
     price: ingredient.price,
     calories: ingredient.calories,
     protein: ingredient.protein,
@@ -283,10 +454,14 @@ function currentRecipe() {
 
 function ingredientFromRow(row) {
   const priceValue = row.querySelector(".ingredient-price").value.trim();
+  const unit = row.querySelector(".ingredient-unit").value;
+  const gramsPerUnit = unit === "g" ? 1 : Math.max(numberFromInput(row.querySelector(".ingredient-grams-per-unit")), 0.01);
 
   return normalizeIngredient({
     name: row.querySelector(".ingredient-name").value.trim(),
-    amount: numberFromInput(row.querySelector(".ingredient-amount")),
+    quantity: numberFromInput(row.querySelector(".ingredient-quantity")),
+    unit,
+    gramsPerUnit,
     price: priceValue === "" ? null : Number.parseFloat(priceValue),
     calories: numberFromInput(row.querySelector(".ingredient-calories")),
     protein: numberFromInput(row.querySelector(".ingredient-protein")),
@@ -305,6 +480,8 @@ function saveIngredientFromRow(row) {
 
   const savedIngredient = normalizeSavedIngredient({
     name: ingredient.name,
+    unit: ingredient.unit,
+    gramsPerUnit: ingredient.gramsPerUnit,
     price: ingredient.price,
     calories: ingredient.calories,
     protein: ingredient.protein,
@@ -390,44 +567,155 @@ function findSavedIngredientByName(name) {
 }
 
 function applySavedNutritionToRow(row, ingredient) {
+  const previousIngredient = ingredientFromRow(row);
+  const unit = ingredient.unit || "g";
+  const gramsPerUnit = unit === "g" ? 1 : ingredient.gramsPerUnit || 1;
+
+  row.querySelector(".ingredient-unit").value = ingredient.unit || "g";
+  row.querySelector(".ingredient-grams-per-unit").value = formatPreciseInputNumber(gramsPerUnit);
+  if (previousIngredient.amount > 0) {
+    row.querySelector(".ingredient-quantity").value = formatPreciseInputNumber(
+      displayQuantityFromGrams(previousIngredient.amount, unit, gramsPerUnit),
+    );
+  }
   row.querySelector(".ingredient-price").value = ingredient.price === null ? "" : ingredient.price || "";
   row.querySelector(".ingredient-calories").value = ingredient.calories || "";
   row.querySelector(".ingredient-protein").value = ingredient.protein || "";
   row.querySelector(".ingredient-carbs").value = ingredient.carbs || "";
   row.querySelector(".ingredient-fat").value = ingredient.fat || "";
+  syncRowConversionState(row);
 }
 
-function gatherNutritionForIngredientName(row) {
+function applyIngredientNameUpdate(row) {
   const nameInput = row.querySelector(".ingredient-name");
-  const savedIngredient = findSavedIngredientByName(nameInput.value);
+  const currentName = nameInput.value.trim();
+  const lastName = row.dataset.lastIngredientName || "";
 
-  if (!savedIngredient) {
+  if (currentName.toLowerCase() === lastName.toLowerCase()) {
     return;
   }
 
-  nameInput.value = savedIngredient.name;
-  applySavedNutritionToRow(row, savedIngredient);
+  const savedIngredient = findSavedIngredientByName(nameInput.value);
+
+  if (savedIngredient) {
+    nameInput.value = savedIngredient.name;
+    applySavedNutritionToRow(row, savedIngredient);
+  } else {
+    suggestRowConversion(row);
+  }
+
+  row.dataset.lastIngredientName = nameInput.value.trim();
   renderOutputs();
+}
+
+function setUnitOptions(select) {
+  select.innerHTML = "";
+  UNIT_OPTIONS.forEach((unit) => {
+    const option = document.createElement("option");
+    option.value = unit.value;
+    option.textContent = unit.label;
+    select.append(option);
+  });
+}
+
+function suggestRowConversion(row) {
+  const previousIngredient = ingredientFromRow(row);
+  const name = row.querySelector(".ingredient-name").value;
+  const quantityInput = row.querySelector(".ingredient-quantity");
+  const unitInput = row.querySelector(".ingredient-unit");
+  const gramsPerUnitInput = row.querySelector(".ingredient-grams-per-unit");
+  const hasNamedConversion = NAMED_CONVERSIONS.some((conversion) => conversion.pattern.test(name));
+
+  if (!hasNamedConversion) {
+    syncRowConversionState(row);
+    return;
+  }
+
+  const conversion = conversionForIngredient(name, "");
+
+  unitInput.value = conversion.unit;
+  gramsPerUnitInput.value = formatPreciseInputNumber(conversion.gramsPerUnit);
+  quantityInput.value = previousIngredient.amount
+    ? formatPreciseInputNumber(displayQuantityFromGrams(previousIngredient.amount, conversion.unit, conversion.gramsPerUnit))
+    : quantityInput.value;
+  syncRowConversionState(row);
+}
+
+function syncRowConversionState(row) {
+  const ingredient = ingredientFromRow(row);
+  const unitInput = row.querySelector(".ingredient-unit");
+  const gramsPerUnitInput = row.querySelector(".ingredient-grams-per-unit");
+  const note = row.querySelector(".amount-note");
+
+  gramsPerUnitInput.disabled = unitInput.value === "g";
+  if (unitInput.value === "g") {
+    gramsPerUnitInput.value = "1";
+  }
+
+  note.textContent = ingredient.amount ? `${formatGrams(ingredient.amount)} total` : "0 g total";
+  row.dataset.currentUnit = unitInput.value;
+}
+
+function gramsBeforeUnitChange(row, nextUnit) {
+  const previousUnit = row.dataset.currentUnit || "g";
+  const quantity = numberFromInput(row.querySelector(".ingredient-quantity"));
+  const gramsPerUnit = previousUnit === "g" ? 1 : numberFromInput(row.querySelector(".ingredient-grams-per-unit"));
+
+  if (previousUnit === nextUnit) {
+    return ingredientFromRow(row).amount;
+  }
+
+  return gramsFromQuantity(quantity, previousUnit, gramsPerUnit);
 }
 
 function addIngredientRow(ingredient = emptyIngredient()) {
   const fragment = elements.ingredientRowTemplate.content.cloneNode(true);
   const row = fragment.querySelector("tr");
+  const normalizedIngredient = normalizeIngredient(ingredient);
 
-  row.querySelector(".ingredient-name").value = ingredient.name || "";
-  row.querySelector(".ingredient-amount").value = ingredient.amount || "";
-  row.querySelector(".ingredient-price").value = ingredient.price === null ? "" : ingredient.price || "";
-  row.querySelector(".ingredient-calories").value = ingredient.calories || "";
-  row.querySelector(".ingredient-protein").value = ingredient.protein || "";
-  row.querySelector(".ingredient-carbs").value = ingredient.carbs || "";
-  row.querySelector(".ingredient-fat").value = ingredient.fat || "";
+  setUnitOptions(row.querySelector(".ingredient-unit"));
+  row.querySelector(".ingredient-name").value = normalizedIngredient.name || "";
+  row.querySelector(".ingredient-quantity").value = normalizedIngredient.quantity || "";
+  row.querySelector(".ingredient-unit").value = normalizedIngredient.unit || "g";
+  row.querySelector(".ingredient-grams-per-unit").value = formatPreciseInputNumber(normalizedIngredient.gramsPerUnit || 1);
+  row.querySelector(".ingredient-price").value = normalizedIngredient.price === null ? "" : normalizedIngredient.price || "";
+  row.querySelector(".ingredient-calories").value = normalizedIngredient.calories || "";
+  row.querySelector(".ingredient-protein").value = normalizedIngredient.protein || "";
+  row.querySelector(".ingredient-carbs").value = normalizedIngredient.carbs || "";
+  row.querySelector(".ingredient-fat").value = normalizedIngredient.fat || "";
+  row.dataset.lastIngredientName = normalizedIngredient.name || "";
 
   row.querySelector(".ingredient-name").addEventListener("change", () => {
-    gatherNutritionForIngredientName(row);
+    applyIngredientNameUpdate(row);
   });
 
   row.querySelector(".ingredient-name").addEventListener("blur", () => {
-    gatherNutritionForIngredientName(row);
+    applyIngredientNameUpdate(row);
+  });
+
+  const unitInput = row.querySelector(".ingredient-unit");
+  unitInput.addEventListener("change", () => {
+    const name = row.querySelector(".ingredient-name").value;
+    const previousGrams = gramsBeforeUnitChange(row, unitInput.value);
+    const conversion = conversionForIngredient(name, unitInput.value);
+
+    row.querySelector(".ingredient-grams-per-unit").value = formatPreciseInputNumber(conversion.gramsPerUnit);
+    if (Number.isFinite(previousGrams) && previousGrams > 0) {
+      row.querySelector(".ingredient-quantity").value = formatPreciseInputNumber(
+        displayQuantityFromGrams(previousGrams, unitInput.value, conversion.gramsPerUnit),
+      );
+    }
+
+    syncRowConversionState(row);
+    renderOutputs();
+  });
+
+  row.querySelector(".ingredient-quantity").addEventListener("input", () => {
+    syncRowConversionState(row);
+  });
+
+  row.querySelector(".ingredient-grams-per-unit").addEventListener("input", () => {
+    syncRowConversionState(row);
   });
 
   row.querySelector(".save-ingredient").addEventListener("click", () => {
@@ -447,6 +735,7 @@ function addIngredientRow(ingredient = emptyIngredient()) {
   });
 
   elements.ingredientRows.append(row);
+  syncRowConversionState(row);
 }
 
 function setFormRecipe(recipe) {
@@ -572,6 +861,242 @@ function createDetailItem(label, value) {
   strong.textContent = value;
   item.append(span, strong);
   return item;
+}
+
+function zeroTotals() {
+  return {
+    weight: 0,
+    price: 0,
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+  };
+}
+
+function addTotals(target, source, multiplier = 1) {
+  target.weight += source.weight * multiplier;
+  target.price += source.price * multiplier;
+  target.calories += source.calories * multiplier;
+  target.protein += source.protein * multiplier;
+  target.carbs += source.carbs * multiplier;
+  target.fat += source.fat * multiplier;
+}
+
+function renderCombinerOptions() {
+  if (!elements.combinerRecipeSelect) {
+    return;
+  }
+
+  elements.combinerRecipeSelect.innerHTML = "";
+
+  if (!state.recipes.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "No saved recipes";
+    elements.combinerRecipeSelect.append(option);
+    return;
+  }
+
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Choose recipe";
+  elements.combinerRecipeSelect.append(placeholder);
+
+  state.recipes.forEach((recipe) => {
+    const option = document.createElement("option");
+    option.value = recipe.id;
+    option.textContent = recipe.name || "Untitled recipe";
+    elements.combinerRecipeSelect.append(option);
+  });
+}
+
+function addSelectedSubRecipe() {
+  if (!elements.combinerRecipeSelect.value) {
+    elements.combinerRecipeSelect.focus();
+    return;
+  }
+
+  state.subRecipes.push({
+    id: elements.combinerRecipeSelect.value,
+    batches: 1,
+  });
+  renderRecipeCombiner();
+}
+
+function subRecipeEntries() {
+  return state.subRecipes
+    .map((subRecipe, index) => {
+      const recipe = state.recipes.find((item) => item.id === subRecipe.id);
+
+      if (!recipe) {
+        return null;
+      }
+
+      const batches = Math.max(Number(subRecipe.batches) || 1, 0.01);
+      const adjustment = savedAdjustmentForRecipe(recipe);
+      const totals = adjustedTotalsForRecipe(recipe, adjustment);
+
+      return {
+        index,
+        recipe,
+        batches,
+        adjustment,
+        totals,
+      };
+    })
+    .filter(Boolean);
+}
+
+function combinedRecipeTotals(entries) {
+  const totals = zeroTotals();
+  const servingTotals = zeroTotals();
+  const servings = entries.length
+    ? Math.min(...entries.map((entry) => entry.adjustment.targetServings * entry.batches))
+    : 0;
+
+  entries.forEach((entry) => {
+    addTotals(totals, entry.totals.recipe, entry.batches);
+    addTotals(servingTotals, entry.totals.serving);
+  });
+
+  return {
+    recipe: totals,
+    servings,
+    serving: servingTotals,
+  };
+}
+
+function renderCombinedSummary(totals) {
+  elements.combinedRecipeGrid.innerHTML = "";
+  elements.combinedServingGrid.innerHTML = "";
+
+  const recipeItems = [
+    ["Total price", formatCurrency(totals.recipe.price)],
+    ["Total weight", formatGrams(totals.recipe.weight)],
+    ["Total calories", formatNumber(totals.recipe.calories, 0)],
+    ["Total protein", `${formatNumber(totals.recipe.protein)} g`],
+    ["Total carbs", `${formatNumber(totals.recipe.carbs)} g`],
+    ["Total fat", `${formatNumber(totals.recipe.fat)} g`],
+  ];
+  const servingItems = [
+    ["Price / serving", formatCurrency(totals.serving.price)],
+    ["Weight / serving", formatGrams(totals.serving.weight)],
+    ["Calories / serving", formatNumber(totals.serving.calories, 0)],
+    ["Protein / serving", `${formatNumber(totals.serving.protein)} g`],
+    ["Carbs / serving", `${formatNumber(totals.serving.carbs)} g`],
+    ["Fat / serving", `${formatNumber(totals.serving.fat)} g`],
+  ];
+
+  recipeItems.forEach(([label, value]) => {
+    elements.combinedRecipeGrid.append(createSummaryItem(label, value));
+  });
+
+  servingItems.forEach(([label, value]) => {
+    elements.combinedServingGrid.append(createSummaryItem(label, value));
+  });
+
+  for (let index = servingItems.length; index < recipeItems.length; index += 1) {
+    const spacer = document.createElement("div");
+    spacer.className = "summary-item summary-item-spacer";
+    spacer.setAttribute("aria-hidden", "true");
+    elements.combinedServingGrid.append(spacer);
+  }
+}
+
+function renderSubRecipeRows(entries) {
+  elements.subRecipeRows.innerHTML = "";
+
+  if (!entries.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "Add saved recipes to see combined totals and sub-recipe breakdowns.";
+    elements.subRecipeRows.append(empty);
+    return;
+  }
+
+  const combinedServings = Math.min(...entries.map((entry) => entry.adjustment.targetServings * entry.batches));
+
+  entries.forEach((entry) => {
+    const card = document.createElement("article");
+    card.className = "sub-recipe-card";
+
+    const header = document.createElement("div");
+    header.className = "sub-recipe-header";
+    const title = document.createElement("div");
+    const name = document.createElement("h3");
+    name.textContent = entry.recipe.name || "Untitled recipe";
+    const meta = document.createElement("p");
+    meta.className = "muted";
+    meta.textContent = `${formatNumber(entry.adjustment.targetServings, 0)} servings per batch at ${formatGrams(entry.adjustment.targetServingGrams)} each`;
+    title.append(name, meta);
+
+    const controls = document.createElement("div");
+    controls.className = "sub-recipe-controls";
+    const label = document.createElement("label");
+    label.textContent = "Batches";
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "0.01";
+    input.step = "0.01";
+    input.value = formatInputNumber(entry.batches);
+    input.addEventListener("change", () => {
+      state.subRecipes[entry.index].batches = Math.max(Number.parseFloat(input.value) || 0.01, 0.01);
+      renderRecipeCombiner();
+    });
+    label.append(input);
+
+    const remove = document.createElement("button");
+    remove.className = "icon-button";
+    remove.type = "button";
+    remove.textContent = "x";
+    remove.setAttribute("aria-label", `Remove ${entry.recipe.name || "sub-recipe"}`);
+    remove.addEventListener("click", () => {
+      state.subRecipes.splice(entry.index, 1);
+      renderRecipeCombiner();
+    });
+
+    controls.append(label, remove);
+    header.append(title, controls);
+
+    const recipeTotals = zeroTotals();
+    addTotals(recipeTotals, entry.totals.recipe, entry.batches);
+    const servings = entry.adjustment.targetServings * entry.batches;
+    const extraServings = Math.max(servings - combinedServings, 0);
+    const detailGrid = document.createElement("div");
+    detailGrid.className = "sub-recipe-breakdown";
+    const detailItems = [
+      ["Price", formatCurrency(recipeTotals.price)],
+      ["Weight", formatGrams(recipeTotals.weight)],
+      ["Servings", formatNumber(servings)],
+      ["Calories", formatNumber(recipeTotals.calories, 0)],
+      ["Protein", `${formatNumber(recipeTotals.protein)} g`],
+      ["Carbs", `${formatNumber(recipeTotals.carbs)} g`],
+      ["Fat", `${formatNumber(recipeTotals.fat)} g`],
+      ["Price / serving", formatCurrency(servings ? recipeTotals.price / servings : 0)],
+    ];
+
+    if (extraServings > 0) {
+      detailItems.push(["Extra servings", formatNumber(extraServings)]);
+    }
+
+    detailItems.forEach(([labelText, value]) => {
+      detailGrid.append(createDetailItem(labelText, value));
+    });
+
+    card.append(header, detailGrid);
+    elements.subRecipeRows.append(card);
+  });
+}
+
+function renderRecipeCombiner() {
+  if (!elements.combinedRecipeGrid || !elements.combinedServingGrid || !elements.subRecipeRows) {
+    return;
+  }
+
+  const entries = subRecipeEntries();
+  renderCombinedSummary(combinedRecipeTotals(entries));
+  renderSubRecipeRows(entries);
 }
 
 function renderLandingDashboard() {
@@ -781,7 +1306,7 @@ function renderScaledIngredients(recipe) {
     const scaledCell = document.createElement("td");
 
     nameCell.textContent = ingredient.name || "Unnamed ingredient";
-    scaledCell.textContent = formatGrams(ingredient.amount * factor);
+    scaledCell.textContent = formatIngredientAmount(ingredient, ingredient.amount * factor);
 
     row.append(nameCell, scaledCell);
     elements.scaledRows.append(row);
@@ -878,6 +1403,9 @@ function init() {
   }
 
   if (elements.landingRecipeGrid) {
+    renderCombinerOptions();
+    renderRecipeCombiner();
+    elements.addSubRecipeButton.addEventListener("click", addSelectedSubRecipe);
     renderLandingDashboard();
   }
 }
