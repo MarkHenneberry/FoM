@@ -9,7 +9,6 @@
   <body>
     <header class="topbar">
       <div>
-        <p class="eyebrow">Recipe Costing</p>
         <h1>Recipes</h1>
       </div>
       <nav class="page-nav" aria-label="Main navigation">
@@ -32,6 +31,24 @@
       </section>
 
       <section class="workspace">
+        <section class="workflow-strip" aria-label="Recipe workflow">
+          <div class="workflow-step">
+            <span>1</span>
+            <strong>Choose</strong>
+            <p>Select a saved recipe or start fresh.</p>
+          </div>
+          <div class="workflow-step">
+            <span>2</span>
+            <strong>Build</strong>
+            <p>Add ingredients, amounts, cost, and macros.</p>
+          </div>
+          <div class="workflow-step">
+            <span>3</span>
+            <strong>Review</strong>
+            <p>Check recipe totals and adjusted servings.</p>
+          </div>
+        </section>
+
         <form class="panel builder-panel" id="recipeForm">
           <div class="section-heading">
             <div>
@@ -56,7 +73,10 @@
           </div>
 
           <div class="table-header">
-            <h3>Ingredients</h3>
+            <div>
+              <h3>Ingredients</h3>
+              <p class="muted">Use saved ingredients to fill nutrition values faster.</p>
+            </div>
             <div class="ingredient-actions">
               <label class="inline-label">
                 Saved ingredient
