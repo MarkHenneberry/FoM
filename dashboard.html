@@ -3,68 +3,183 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Recipe Dashboard</title>
+    <title>Make &amp; Calculate</title>
     <link rel="stylesheet" href="styles.css">
   </head>
-  <body>
+  <body data-page="make">
     <header class="topbar">
       <div>
-        <h1>Dashboard</h1>
+        <h1>Make &amp; Calculate</h1>
       </div>
       <nav class="page-nav" aria-label="Main navigation">
-        <a class="nav-link active" href="dashboard.html">Dashboard</a>
-        <a class="nav-link" href="index.html">Recipes</a>
+        <a class="nav-link active" href="dashboard.html">Make &amp; Calculate</a>
+        <a class="nav-link" href="index.html">Library</a>
       </nav>
       <span class="header-action-spacer" aria-hidden="true"></span>
     </header>
 
-    <main class="landing-layout">
-      <section class="panel combiner-panel" aria-labelledby="combinerTitle">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Combine</p>
-            <h2 id="combinerTitle">Recipe Combiner</h2>
-            <p class="muted">Build a larger recipe from saved recipes as sub-recipes.</p>
-            <p class="muted">Per serving adds one serving from each sub-recipe. Extra servings appear when a sub-recipe makes more than the combined serving count.</p>
-          </div>
-        </div>
-
-        <div class="combiner-controls">
-          <label class="inline-label">
-            Sub-recipe
-            <select id="combinerRecipeSelect">
-              <option value="">No saved recipes</option>
-            </select>
+    <main class="make-layout">
+      <form class="recipe-workspace" id="recipeForm">
+        <section class="workspace-header" aria-label="Recipe setup">
+          <label>
+            Recipe Name
+            <input id="recipeName" name="recipeName" type="text" list="savedRecipeNames" placeholder="New recipe">
           </label>
-          <button class="secondary-button" id="addSubRecipeButton" type="button">Add Sub-Recipe</button>
-        </div>
+          <label class="servings-field">
+            Servings
+            <input id="recipeServings" name="recipeServings" type="number" min="1" step="1" value="1" required>
+          </label>
+          <button class="primary-button" id="saveRecipeButton" type="submit">Save</button>
+        </section>
 
-        <div class="output-groups combiner-output-groups" aria-live="polite">
-          <section class="output-group" aria-labelledby="combinedRecipeTitle">
-            <h3 id="combinedRecipeTitle">Per Recipe</h3>
-            <div class="summary-grid" id="combinedRecipeGrid"></div>
-          </section>
-          <section class="output-group" aria-labelledby="combinedServingTitle">
-            <h3 id="combinedServingTitle">Per Serving</h3>
-            <div class="summary-grid" id="combinedServingGrid"></div>
-          </section>
-        </div>
-        <div class="sub-recipe-list" id="subRecipeRows" aria-live="polite"></div>
-      </section>
-
-      <section class="panel landing-panel" aria-labelledby="landingTitle">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Stored Recipes</p>
-            <h2 id="landingTitle">Recipe Library</h2>
-            <p class="muted">Open a recipe to see adjusted cost, nutrition, and serving details.</p>
+        <section class="ingredient-workspace" aria-labelledby="ingredientsTitle">
+          <div class="workspace-section-heading">
+            <div>
+              <h2 id="ingredientsTitle">Ingredients</h2>
+              <p class="muted">Add what goes into the recipe. Open a row when you need cost, nutrition, or conversion details.</p>
+            </div>
           </div>
-          <p id="landingRecipeCount" class="muted">0 recipes</p>
+
+          <div id="ingredientRows" class="ingredient-card-list" aria-live="polite"></div>
+
+          <div class="add-ingredient-flow">
+            <button class="add-text-button" id="addIngredientButton" type="button">+ Add Ingredient</button>
+
+            <div class="ingredient-picker" id="addIngredientPicker" hidden>
+              <label>
+                Search saved ingredients
+                <select id="savedIngredientSelect">
+                  <option value="">No saved ingredients</option>
+                </select>
+              </label>
+              <button class="secondary-button" id="addSavedIngredientButton" type="button">Add Saved Ingredient</button>
+              <button class="ghost-button" id="createIngredientButton" type="button">Create new ingredient</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="sub-recipe-workspace" aria-labelledby="subRecipesTitle">
+          <div>
+            <h2 id="subRecipesTitle">Sub-Recipes</h2>
+            <p class="muted">Add a saved recipe as a reusable component.</p>
+          </div>
+
+          <div class="sub-recipe-picker">
+            <label>
+              Saved recipe
+              <select id="combinerRecipeSelect">
+                <option value="">No saved recipes</option>
+              </select>
+            </label>
+            <button class="ghost-button" id="addSubRecipeButton" type="button">+ Add Sub-Recipe</button>
+          </div>
+          <div class="sub-recipe-list compact" id="subRecipeRows" aria-live="polite"></div>
+        </section>
+      </form>
+
+      <aside class="summary-sidebar" aria-labelledby="summaryTitle">
+        <div class="summary-sticky">
+          <div class="workspace-section-heading">
+            <div>
+              <p class="eyebrow">Live Output</p>
+              <h2 id="summaryTitle">Recipe Summary</h2>
+              <p class="muted">This side will become the live cost and nutrition panel.</p>
+            </div>
+          </div>
+
+          <div class="output-groups summary-placeholder-groups">
+            <section class="output-group" aria-labelledby="recipeTotalsTitle">
+              <h3 id="recipeTotalsTitle">Per Recipe</h3>
+              <div class="summary-grid" id="recipeTotalsGrid"></div>
+            </section>
+            <section class="output-group" aria-labelledby="servingTotalsTitle">
+              <h3 id="servingTotalsTitle">Per Serving</h3>
+              <div class="summary-grid" id="servingTotalsGrid"></div>
+            </section>
+          </div>
+
+          <section class="adjust-section compact-adjust" aria-labelledby="scalerTitle">
+            <div class="subsection-heading">
+              <div>
+                <p class="eyebrow">Scale</p>
+                <h3 id="scalerTitle">Adjust Serving</h3>
+              </div>
+              <button class="secondary-button" id="resetScaleButton" type="button">Reset</button>
+            </div>
+
+            <div class="scale-controls">
+              <label>
+                Servings
+                <input id="targetServings" type="number" min="1" step="1">
+              </label>
+              <label>
+                Grams per serving
+                <input id="targetServingGrams" type="number" min="0" step="1">
+              </label>
+            </div>
+            <p class="muted" id="scaleHelp">Change either value to see the ingredient amounts needed for the new batch.</p>
+            <div class="scaled-table-wrap">
+              <table class="scaled-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Ingredient</th>
+                    <th scope="col">Amount</th>
+                  </tr>
+                </thead>
+                <tbody id="scaledRows"></tbody>
+              </table>
+            </div>
+          </section>
         </div>
-        <div id="landingRecipeGrid" class="landing-recipe-grid" aria-live="polite"></div>
-      </section>
+      </aside>
     </main>
 
+    <template id="ingredientRowTemplate">
+      <article class="ingredient-row" data-expanded="false">
+        <div class="ingredient-row-main">
+          <button class="expand-ingredient" type="button" aria-label="Expand ingredient">+</button>
+          <input class="ingredient-name" type="text" list="savedIngredientNames" placeholder="Ingredient">
+          <div class="amount-entry">
+            <input class="ingredient-quantity" type="number" min="0" step="any" placeholder="0" aria-label="Amount">
+            <small class="amount-note">0 g total</small>
+          </div>
+          <select class="ingredient-unit" aria-label="Ingredient unit"></select>
+          <strong class="ingredient-cost">-</strong>
+          <button class="icon-button remove-ingredient" type="button" aria-label="Remove ingredient">x</button>
+        </div>
+
+        <div class="ingredient-details" hidden>
+          <label>
+            Grams per unit
+            <input class="ingredient-grams-per-unit" type="number" min="0.01" step="any" value="1">
+          </label>
+          <label>
+            Price / 100g
+            <input class="ingredient-price" type="number" min="0" step="0.01" placeholder="Optional">
+          </label>
+          <label>
+            Calories / 100g
+            <input class="ingredient-calories" type="number" min="0" step="0.01" placeholder="0">
+          </label>
+          <label>
+            Protein / 100g
+            <input class="ingredient-protein" type="number" min="0" step="0.01" placeholder="0">
+          </label>
+          <label>
+            Carbs / 100g
+            <input class="ingredient-carbs" type="number" min="0" step="0.01" placeholder="0">
+          </label>
+          <label>
+            Fat / 100g
+            <input class="ingredient-fat" type="number" min="0" step="0.01" placeholder="0">
+          </label>
+          <button class="secondary-button save-ingredient" type="button">Save ingredient</button>
+        </div>
+      </article>
+    </template>
+
+    <datalist id="savedRecipeNames"></datalist>
+    <datalist id="savedIngredientNames"></datalist>
     <script src="app.js"></script>
   </body>
 </html>

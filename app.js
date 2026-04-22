@@ -6,6 +6,8 @@ const state = {
   savedIngredients: [],
   subRecipes: [],
   selectedId: null,
+  draftId: null,
+  isDirty: false,
   lastScaleInput: "servings",
   scaleFactor: 1,
 };
@@ -13,15 +15,19 @@ const state = {
 const elements = {
   form: document.querySelector("#recipeForm"),
   recipeName: document.querySelector("#recipeName"),
+  savedRecipeNames: document.querySelector("#savedRecipeNames"),
   recipeServings: document.querySelector("#recipeServings"),
   ingredientRows: document.querySelector("#ingredientRows"),
   ingredientRowTemplate: document.querySelector("#ingredientRowTemplate"),
   addIngredientButton: document.querySelector("#addIngredientButton"),
+  addIngredientPicker: document.querySelector("#addIngredientPicker"),
+  createIngredientButton: document.querySelector("#createIngredientButton"),
   savedIngredientSelect: document.querySelector("#savedIngredientSelect"),
   savedIngredientNames: document.querySelector("#savedIngredientNames"),
   addSavedIngredientButton: document.querySelector("#addSavedIngredientButton"),
   newRecipeButton: document.querySelector("#newRecipeButton"),
   deleteRecipeButton: document.querySelector("#deleteRecipeButton"),
+  saveRecipeButton: document.querySelector("#saveRecipeButton"),
   recipeDashboard: document.querySelector("#recipeDashboard"),
   recipeCount: document.querySelector("#recipeCount"),
   recipeTotalsGrid: document.querySelector("#recipeTotalsGrid"),
@@ -427,8 +433,12 @@ function activeAdjustmentForRecipe(recipe) {
 }
 
 function readRecipeFromForm() {
-  const id = state.selectedId || createId();
-  const ingredients = [...elements.ingredientRows.querySelectorAll("tr")].map(ingredientFromRow);
+  const id = state.selectedId || state.draftId || createId();
+  if (!state.selectedId && !state.draftId) {
+    state.draftId = id;
+  }
+
+  const ingredients = [...elements.ingredientRows.querySelectorAll(".ingredient-row")].map(ingredientFromRow);
   const servings = Math.max(numberFromInput(elements.recipeServings), 0.01);
   const draftTotals = totalsForRecipe({ servings, ingredients });
   const targetServingGrams = numberFromInput(elements.targetServingGrams) || draftTotals.serving.weight;
@@ -450,6 +460,86 @@ function readRecipeFromForm() {
 
 function currentRecipe() {
   return readRecipeFromForm();
+}
+
+function findSavedRecipeByName(name) {
+  const normalizedName = name.trim().toLowerCase();
+
+  if (!normalizedName) {
+    return null;
+  }
+
+  return state.recipes.find((recipe) => recipe.name.toLowerCase() === normalizedName) || null;
+}
+
+function renderRecipeNameOptions() {
+  if (!elements.savedRecipeNames) {
+    return;
+  }
+
+  elements.savedRecipeNames.innerHTML = "";
+  state.recipes.forEach((recipe) => {
+    const option = document.createElement("option");
+    option.value = recipe.name || "Untitled recipe";
+    elements.savedRecipeNames.append(option);
+  });
+}
+
+function currentPageName() {
+  return document.body.dataset.page || "";
+}
+
+function isMakeWorkspace() {
+  return currentPageName() === "make";
+}
+
+function updateSaveButtonState() {
+  if (!elements.saveRecipeButton) {
+    return;
+  }
+
+  if (!state.selectedId) {
+    elements.saveRecipeButton.textContent = "Save";
+    elements.saveRecipeButton.disabled = false;
+    return;
+  }
+
+  elements.saveRecipeButton.textContent = state.isDirty ? "Save Changes" : "Saved";
+  elements.saveRecipeButton.disabled = !state.isDirty;
+}
+
+function markDirty() {
+  state.isDirty = true;
+  updateSaveButtonState();
+}
+
+function recognizeRecipeNameState() {
+  if (!isMakeWorkspace()) {
+    markDirty();
+    renderOutputs();
+    return;
+  }
+
+  const name = elements.recipeName.value.trim();
+  const matchedRecipe = findSavedRecipeByName(name);
+
+  if (matchedRecipe && matchedRecipe.id === state.selectedId && !state.isDirty) {
+    updateSaveButtonState();
+    return;
+  }
+
+  if (matchedRecipe && matchedRecipe.id !== state.selectedId) {
+    setFormRecipe(matchedRecipe);
+    return;
+  }
+
+  if (!matchedRecipe && state.selectedId) {
+    state.selectedId = null;
+    state.draftId = createId();
+  }
+
+  markDirty();
+  renderOutputs();
 }
 
 function ingredientFromRow(row) {
@@ -552,7 +642,11 @@ function addSelectedSavedIngredient() {
     return;
   }
 
-  addIngredientRow(savedIngredientToRecipeIngredient(ingredient));
+  addIngredientRow(savedIngredientToRecipeIngredient(ingredient), { expanded: false });
+  if (elements.addIngredientPicker) {
+    elements.addIngredientPicker.hidden = true;
+  }
+  markDirty();
   renderOutputs();
 }
 
@@ -618,6 +712,33 @@ function setUnitOptions(select) {
   });
 }
 
+function costForIngredient(ingredient) {
+  return ingredient.price === null ? 0 : ingredient.price * (ingredient.amount / 100);
+}
+
+function updateIngredientRowSummary(row) {
+  const cost = row.querySelector(".ingredient-cost");
+  if (!cost) {
+    return;
+  }
+
+  const ingredient = ingredientFromRow(row);
+  cost.textContent = ingredient.price === null || !ingredient.amount ? "-" : formatCurrency(costForIngredient(ingredient));
+}
+
+function setIngredientRowExpanded(row, expanded) {
+  const details = row.querySelector(".ingredient-details");
+  const toggle = row.querySelector(".expand-ingredient");
+  if (!details || !toggle) {
+    return;
+  }
+
+  row.dataset.expanded = expanded ? "true" : "false";
+  details.hidden = !expanded;
+  toggle.textContent = expanded ? "-" : "+";
+  toggle.setAttribute("aria-label", expanded ? "Collapse ingredient" : "Expand ingredient");
+}
+
 function suggestRowConversion(row) {
   const previousIngredient = ingredientFromRow(row);
   const name = row.querySelector(".ingredient-name").value;
@@ -654,6 +775,7 @@ function syncRowConversionState(row) {
 
   note.textContent = ingredient.amount ? `${formatGrams(ingredient.amount)} total` : "0 g total";
   row.dataset.currentUnit = unitInput.value;
+  updateIngredientRowSummary(row);
 }
 
 function gramsBeforeUnitChange(row, nextUnit) {
@@ -668,9 +790,9 @@ function gramsBeforeUnitChange(row, nextUnit) {
   return gramsFromQuantity(quantity, previousUnit, gramsPerUnit);
 }
 
-function addIngredientRow(ingredient = emptyIngredient()) {
+function addIngredientRow(ingredient = emptyIngredient(), options = {}) {
   const fragment = elements.ingredientRowTemplate.content.cloneNode(true);
-  const row = fragment.querySelector("tr");
+  const row = fragment.querySelector(".ingredient-row");
   const normalizedIngredient = normalizeIngredient(ingredient);
 
   setUnitOptions(row.querySelector(".ingredient-unit"));
@@ -687,11 +809,19 @@ function addIngredientRow(ingredient = emptyIngredient()) {
 
   row.querySelector(".ingredient-name").addEventListener("change", () => {
     applyIngredientNameUpdate(row);
+    markDirty();
   });
 
   row.querySelector(".ingredient-name").addEventListener("blur", () => {
     applyIngredientNameUpdate(row);
   });
+
+  const expandButton = row.querySelector(".expand-ingredient");
+  if (expandButton) {
+    expandButton.addEventListener("click", () => {
+      setIngredientRowExpanded(row, row.dataset.expanded !== "true");
+    });
+  }
 
   const unitInput = row.querySelector(".ingredient-unit");
   unitInput.addEventListener("change", () => {
@@ -707,6 +837,7 @@ function addIngredientRow(ingredient = emptyIngredient()) {
     }
 
     syncRowConversionState(row);
+    markDirty();
     renderOutputs();
   });
 
@@ -725,43 +856,56 @@ function addIngredientRow(ingredient = emptyIngredient()) {
   row.querySelector(".remove-ingredient").addEventListener("click", () => {
     row.remove();
     if (!elements.ingredientRows.children.length) {
-      addIngredientRow();
+      if (isMakeWorkspace()) {
+        renderOutputs();
+      } else {
+        addIngredientRow();
+      }
     }
+    markDirty();
     renderOutputs();
   });
 
   row.querySelectorAll("input").forEach((input) => {
-    input.addEventListener("input", renderOutputs);
+    input.addEventListener("input", () => {
+      markDirty();
+      renderOutputs();
+    });
   });
 
   elements.ingredientRows.append(row);
   syncRowConversionState(row);
+  setIngredientRowExpanded(row, Boolean(options.expanded));
 }
 
-function setFormRecipe(recipe) {
-  state.selectedId = recipe.id;
+function setFormRecipe(recipe, options = {}) {
+  const saved = options.saved !== false;
+  state.selectedId = saved ? recipe.id : null;
+  state.draftId = saved ? null : recipe.id;
+  state.isDirty = false;
   elements.recipeName.value = recipe.name;
   elements.recipeServings.value = recipe.servings;
   elements.ingredientRows.innerHTML = "";
 
-  const ingredients = recipe.ingredients.length ? recipe.ingredients : [emptyIngredient()];
+  const ingredients = recipe.ingredients.length || isMakeWorkspace() ? recipe.ingredients : [emptyIngredient()];
   ingredients.forEach(addIngredientRow);
 
   applySavedScaleControls(recipe);
   renderAll();
+  updateSaveButtonState();
 }
 
 function newRecipe() {
   const recipe = {
     id: createId(),
     name: "",
-    servings: 4,
-    ingredients: [emptyIngredient()],
+    servings: isMakeWorkspace() ? 1 : 4,
+    ingredients: isMakeWorkspace() ? [] : [emptyIngredient()],
     adjustment: null,
     updatedAt: new Date().toISOString(),
   };
 
-  setFormRecipe(recipe);
+  setFormRecipe(recipe, { saved: false });
 }
 
 function upsertCurrentRecipe() {
@@ -775,8 +919,12 @@ function upsertCurrentRecipe() {
   }
 
   state.selectedId = recipe.id;
+  state.draftId = null;
+  state.isDirty = false;
   saveRecipes();
+  renderRecipeNameOptions();
   renderAll();
+  updateSaveButtonState();
 }
 
 function deleteCurrentRecipe() {
@@ -802,6 +950,10 @@ function deleteCurrentRecipe() {
 }
 
 function renderDashboard() {
+  if (!elements.recipeDashboard || !elements.recipeCount) {
+    return;
+  }
+
   elements.recipeDashboard.innerHTML = "";
   elements.recipeCount.textContent = `${state.recipes.length} ${state.recipes.length === 1 ? "recipe" : "recipes"}`;
 
@@ -921,6 +1073,7 @@ function addSelectedSubRecipe() {
     id: elements.combinerRecipeSelect.value,
     batches: 1,
   });
+  markDirty();
   renderRecipeCombiner();
 }
 
@@ -1006,11 +1159,12 @@ function renderCombinedSummary(totals) {
 
 function renderSubRecipeRows(entries) {
   elements.subRecipeRows.innerHTML = "";
+  const compact = elements.subRecipeRows.classList.contains("compact");
 
   if (!entries.length) {
     const empty = document.createElement("p");
     empty.className = "empty-state";
-    empty.textContent = "Add saved recipes to see combined totals and sub-recipe breakdowns.";
+    empty.textContent = compact ? "No sub-recipes added." : "Add saved recipes to see combined totals and sub-recipe breakdowns.";
     elements.subRecipeRows.append(empty);
     return;
   }
@@ -1059,6 +1213,12 @@ function renderSubRecipeRows(entries) {
     controls.append(label, remove);
     header.append(title, controls);
 
+    if (compact) {
+      card.append(header);
+      elements.subRecipeRows.append(card);
+      return;
+    }
+
     const recipeTotals = zeroTotals();
     addTotals(recipeTotals, entry.totals.recipe, entry.batches);
     const servings = entry.adjustment.targetServings * entry.batches;
@@ -1090,12 +1250,14 @@ function renderSubRecipeRows(entries) {
 }
 
 function renderRecipeCombiner() {
-  if (!elements.combinedRecipeGrid || !elements.combinedServingGrid || !elements.subRecipeRows) {
+  if (!elements.subRecipeRows) {
     return;
   }
 
   const entries = subRecipeEntries();
-  renderCombinedSummary(combinedRecipeTotals(entries));
+  if (elements.combinedRecipeGrid && elements.combinedServingGrid) {
+    renderCombinedSummary(combinedRecipeTotals(entries));
+  }
   renderSubRecipeRows(entries);
 }
 
@@ -1153,8 +1315,8 @@ function renderLandingDashboard() {
     actions.className = "landing-card-actions";
     const editLink = document.createElement("a");
     editLink.className = "secondary-button";
-    editLink.href = `index.html?recipe=${encodeURIComponent(recipe.id)}`;
-    editLink.textContent = "Open in Recipes";
+    editLink.href = `dashboard.html?recipe=${encodeURIComponent(recipe.id)}`;
+    editLink.textContent = "Open in Make & Calculate";
     actions.append(editLink);
 
     detail.append(detailGrid, actions);
@@ -1322,6 +1484,7 @@ function renderOutputs() {
 
 function renderAll() {
   renderDashboard();
+  renderRecipeCombiner();
   renderOutputs();
 }
 
@@ -1338,42 +1501,80 @@ function bindBuilderEvents() {
   });
 
   elements.addIngredientButton.addEventListener("click", () => {
+    if (elements.addIngredientPicker) {
+      elements.addIngredientPicker.hidden = !elements.addIngredientPicker.hidden;
+      return;
+    }
+
     addIngredientRow();
+    markDirty();
     renderOutputs();
   });
 
-  elements.addSavedIngredientButton.addEventListener("click", addSelectedSavedIngredient);
+  if (elements.addSavedIngredientButton) {
+    elements.addSavedIngredientButton.addEventListener("click", addSelectedSavedIngredient);
+  }
 
-  elements.newRecipeButton.addEventListener("click", newRecipe);
+  if (elements.createIngredientButton) {
+    elements.createIngredientButton.addEventListener("click", () => {
+      addIngredientRow(emptyIngredient(), { expanded: true });
+      elements.addIngredientPicker.hidden = true;
+      markDirty();
+      renderOutputs();
+    });
+  }
 
-  elements.deleteRecipeButton.addEventListener("click", deleteCurrentRecipe);
+  if (elements.newRecipeButton) {
+    elements.newRecipeButton.addEventListener("click", newRecipe);
+  }
+
+  if (elements.deleteRecipeButton) {
+    elements.deleteRecipeButton.addEventListener("click", deleteCurrentRecipe);
+  }
+
+  if (elements.combinerRecipeSelect) {
+    renderCombinerOptions();
+  }
+
+  if (elements.addSubRecipeButton) {
+    elements.addSubRecipeButton.addEventListener("click", addSelectedSubRecipe);
+  }
 
   elements.form.addEventListener("submit", (event) => {
     event.preventDefault();
-    if (!elements.ingredientRows.children.length) {
+    if (!elements.ingredientRows.children.length && !isMakeWorkspace()) {
       addIngredientRow();
     }
     upsertCurrentRecipe();
   });
 
-  [elements.recipeName, elements.recipeServings].forEach((input) => {
-    input.addEventListener("input", renderOutputs);
+  elements.recipeName.addEventListener("input", recognizeRecipeNameState);
+  elements.recipeName.addEventListener("change", recognizeRecipeNameState);
+
+  [elements.recipeServings].forEach((input) => {
+    input.addEventListener("input", () => {
+      markDirty();
+      renderOutputs();
+    });
   });
 
   elements.targetServings.addEventListener("input", () => {
     state.lastScaleInput = "servings";
+    markDirty();
     renderOutputs();
   });
 
   elements.targetServingGrams.addEventListener("input", () => {
     state.lastScaleInput = "servingGrams";
     updateServingsFromServingGrams(currentRecipe());
+    markDirty();
     renderOutputs();
   });
 
   elements.resetScaleButton.addEventListener("click", () => {
     const recipe = currentRecipe();
     resetScaleControls(recipe);
+    markDirty();
     renderOutputs();
   });
 }
@@ -1382,6 +1583,10 @@ function getInitialBuilderRecipe() {
   const params = new URLSearchParams(window.location.search);
   const requestedId = params.get("recipe");
   const requestedRecipe = state.recipes.find((recipe) => recipe.id === requestedId);
+
+  if (isMakeWorkspace()) {
+    return requestedRecipe || null;
+  }
 
   return requestedRecipe || state.recipes[0] || null;
 }
@@ -1392,6 +1597,7 @@ function init() {
 
   if (elements.form) {
     bindBuilderEvents();
+    renderRecipeNameOptions();
     renderSavedIngredientOptions();
     const initialRecipe = getInitialBuilderRecipe();
 
@@ -1405,7 +1611,9 @@ function init() {
   if (elements.landingRecipeGrid) {
     renderCombinerOptions();
     renderRecipeCombiner();
-    elements.addSubRecipeButton.addEventListener("click", addSelectedSubRecipe);
+    if (elements.addSubRecipeButton) {
+      elements.addSubRecipeButton.addEventListener("click", addSelectedSubRecipe);
+    }
     renderLandingDashboard();
   }
 }

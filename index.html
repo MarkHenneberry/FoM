@@ -3,17 +3,17 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Recipes</title>
+    <title>Library</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <header class="topbar">
       <div>
-        <h1>Recipes</h1>
+        <h1>Library</h1>
       </div>
       <nav class="page-nav" aria-label="Main navigation">
-        <a class="nav-link" href="dashboard.html">Dashboard</a>
-        <a class="nav-link active" href="index.html">Recipes</a>
+        <a class="nav-link" href="dashboard.html">Make &amp; Calculate</a>
+        <a class="nav-link active" href="index.html">Library</a>
       </nav>
       <button class="secondary-button" id="newRecipeButton" type="button">New Recipe</button>
     </header>
@@ -23,7 +23,7 @@
         <div class="section-heading">
           <div>
             <p class="eyebrow">Stored Recipes</p>
-            <h2 id="dashboardTitle">Dashboard</h2>
+            <h2 id="dashboardTitle">Make &amp; Calculate</h2>
           </div>
           <p id="recipeCount" class="muted">0 recipes</p>
         </div>
@@ -52,7 +52,7 @@
         <form class="panel builder-panel" id="recipeForm">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Recipes</p>
+              <p class="eyebrow">Library</p>
               <h2>Recipe Details</h2>
             </div>
             <div class="form-actions">
@@ -64,7 +64,7 @@
           <div class="recipe-meta">
             <label>
               Recipe name
-              <input id="recipeName" name="recipeName" type="text" placeholder="Chicken rice bowls">
+              <input id="recipeName" name="recipeName" type="text" list="savedRecipeNames" placeholder="Chicken rice bowls">
             </label>
             <label>
               Servings per recipe
@@ -167,7 +167,7 @@
     </main>
 
     <template id="ingredientRowTemplate">
-      <tr>
+      <tr class="ingredient-row">
         <td>
           <input class="ingredient-name" type="text" list="savedIngredientNames" placeholder="Ingredient">
         </td>
@@ -207,6 +207,7 @@
       </tr>
     </template>
 
+    <datalist id="savedRecipeNames"></datalist>
     <datalist id="savedIngredientNames"></datalist>
     <script src="app.js"></script>
   </body>

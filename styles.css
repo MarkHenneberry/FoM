@@ -147,7 +147,7 @@ td {
   left: 50%;
   display: grid;
   place-content: center;
-  width: 18rem;
+  width: 22rem;
   height: 4.35rem;
   transform: translateX(-50%);
   text-align: center;
@@ -161,6 +161,7 @@ td {
 .topbar h1 {
   font-size: 2.15rem;
   line-height: 1;
+  white-space: nowrap;
 }
 
 .topbar > div:first-child .eyebrow {
@@ -205,7 +206,7 @@ td {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 7.5rem;
+  width: 10rem;
   height: 2.75rem;
   min-height: 2.75rem;
   padding: 0;
@@ -244,6 +245,209 @@ td {
   display: grid;
   gap: 1.15rem;
   min-width: 0;
+}
+
+.make-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.75fr);
+  gap: 1.25rem;
+  padding: 1.15rem clamp(1rem, 3vw, 2rem) 2rem;
+  align-items: start;
+}
+
+.recipe-workspace {
+  display: grid;
+  gap: 1rem;
+  max-height: calc(100vh - 13.75rem);
+  overflow: auto;
+  padding-right: 0.2rem;
+}
+
+.workspace-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(7rem, 0.25fr) auto;
+  gap: 0.8rem;
+  align-items: end;
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, #f9fcfa 100%);
+  box-shadow: var(--shadow-tight);
+}
+
+.workspace-header .primary-button {
+  min-width: 8.5rem;
+  height: 2.75rem;
+}
+
+.workspace-header .primary-button:disabled {
+  cursor: default;
+  background: linear-gradient(180deg, #ecf5ef 0%, #dcebe2 100%);
+  color: var(--accent-dark);
+  border-color: #bfd9c9;
+  box-shadow: none;
+  transform: none;
+}
+
+.ingredient-workspace,
+.sub-recipe-workspace,
+.summary-sidebar {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, var(--surface) 100%);
+  box-shadow: var(--shadow);
+}
+
+.ingredient-workspace,
+.sub-recipe-workspace {
+  display: grid;
+  gap: 1rem;
+  padding: 1.1rem;
+}
+
+.workspace-section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.ingredient-card-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.ingredient-row {
+  display: grid;
+  gap: 0.8rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow-tight);
+}
+
+.ingredient-row-main {
+  display: grid;
+  grid-template-columns: 2.35rem minmax(13rem, 1.3fr) minmax(8rem, 0.45fr) minmax(7rem, 0.35fr) minmax(5.5rem, auto) 2.35rem;
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.expand-ingredient {
+  width: 2.35rem;
+  min-height: 2.75rem;
+  border: 1px solid #b9ddc9;
+  border-radius: 6px;
+  background: var(--accent-pale);
+  color: var(--accent-dark);
+  font-weight: 900;
+}
+
+.ingredient-cost {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  align-self: start;
+  justify-self: end;
+  color: var(--accent-dark);
+  font-size: 0.95rem;
+}
+
+.ingredient-details {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.ingredient-details[hidden] {
+  display: none;
+}
+
+.ingredient-details .save-ingredient {
+  align-self: end;
+  min-height: 2.75rem;
+}
+
+.add-ingredient-flow {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.add-text-button,
+.ghost-button {
+  justify-self: start;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--accent-dark);
+  font-weight: 900;
+}
+
+.add-text-button {
+  padding: 0.35rem 0;
+}
+
+.ghost-button {
+  min-height: 2.55rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+
+.add-text-button:hover,
+.ghost-button:hover {
+  color: var(--accent);
+  background: var(--accent-pale);
+}
+
+.ingredient-picker,
+.sub-recipe-picker {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--accent-pale);
+}
+
+.ingredient-picker[hidden] {
+  display: none;
+}
+
+.ingredient-picker label,
+.sub-recipe-picker label {
+  min-width: 15rem;
+}
+
+.summary-sidebar {
+  min-width: 0;
+}
+
+.summary-sticky {
+  position: sticky;
+  top: 1rem;
+  display: grid;
+  gap: 1rem;
+  padding: 1.1rem;
+}
+
+.summary-placeholder-groups {
+  grid-template-columns: 1fr;
+  margin-bottom: 0;
+}
+
+.compact-adjust {
+  border-top: 0;
 }
 
 .panel {
@@ -984,6 +1188,20 @@ td {
     grid-template-columns: 1fr;
   }
 
+  .make-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .recipe-workspace {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .summary-sticky {
+    position: static;
+  }
+
   .landing-layout {
     grid-template-columns: 1fr;
   }
@@ -994,6 +1212,20 @@ td {
 
   .sub-recipe-breakdown {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ingredient-row-main,
+  .ingredient-details {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .expand-ingredient,
+  .ingredient-row-main .icon-button {
+    width: 100%;
+  }
+
+  .ingredient-cost {
+    justify-self: start;
   }
 
   .dashboard-panel {
@@ -1033,16 +1265,24 @@ td {
     padding: 0.8rem;
   }
 
+  .topbar h1 {
+    white-space: normal;
+  }
+
   .topbar .header-action-spacer {
     display: none;
   }
 
   .topbar,
+  .workspace-header,
   .section-heading,
+  .workspace-section-heading,
   .subsection-heading,
   .table-header,
   .form-actions,
   .ingredient-actions,
+  .ingredient-picker,
+  .sub-recipe-picker,
   .combiner-controls,
   .sub-recipe-header,
   .sub-recipe-controls,
@@ -1060,6 +1300,8 @@ td {
   .output-groups,
   .workflow-strip,
   .sub-recipe-breakdown,
+  .ingredient-row-main,
+  .ingredient-details,
   .landing-summary-grid,
   .landing-detail-grid {
     grid-template-columns: 1fr;
@@ -1067,9 +1309,14 @@ td {
 
   .form-actions,
   .form-actions button,
+  .workspace-header .primary-button,
   .topbar button,
   .table-header button,
   .ingredient-actions button,
+  .ingredient-picker label,
+  .ingredient-picker button,
+  .sub-recipe-picker label,
+  .sub-recipe-picker button,
   .combiner-controls button,
   .sub-recipe-controls label,
   .sub-recipe-controls button,
