@@ -32,48 +32,19 @@
           <button class="primary-button" id="saveRecipeButton" type="submit">Save</button>
         </section>
 
-        <section class="ingredient-workspace" aria-labelledby="ingredientsTitle">
+        <section class="ingredient-workspace" aria-labelledby="componentsTitle">
           <div class="workspace-section-heading">
             <div>
-              <h2 id="ingredientsTitle">Ingredients</h2>
-              <p class="muted">Add what goes into the recipe. Open a row when you need cost, nutrition, or conversion details.</p>
+              <h2 id="componentsTitle">Components</h2>
+              <p class="muted">Build this recipe from ingredients or recipes. Type first, then decide whether the row should stay simple or open for deeper editing.</p>
             </div>
           </div>
 
           <div id="ingredientRows" class="ingredient-card-list" aria-live="polite"></div>
 
           <div class="add-ingredient-flow">
-            <button class="add-text-button" id="addIngredientButton" type="button">+ Add Ingredient</button>
-
-            <div class="ingredient-picker" id="addIngredientPicker" hidden>
-              <label>
-                Search saved ingredients
-                <select id="savedIngredientSelect">
-                  <option value="">No saved ingredients</option>
-                </select>
-              </label>
-              <button class="secondary-button" id="addSavedIngredientButton" type="button">Add Saved Ingredient</button>
-              <button class="ghost-button" id="createIngredientButton" type="button">Create new ingredient</button>
-            </div>
+            <button class="add-text-button" id="addIngredientButton" type="button">+ Add Component</button>
           </div>
-        </section>
-
-        <section class="sub-recipe-workspace" aria-labelledby="subRecipesTitle">
-          <div>
-            <h2 id="subRecipesTitle">Sub-Recipes</h2>
-            <p class="muted">Add a saved recipe as a reusable component.</p>
-          </div>
-
-          <div class="sub-recipe-picker">
-            <label>
-              Saved recipe
-              <select id="combinerRecipeSelect">
-                <option value="">No saved recipes</option>
-              </select>
-            </label>
-            <button class="ghost-button" id="addSubRecipeButton" type="button">+ Add Sub-Recipe</button>
-          </div>
-          <div class="sub-recipe-list compact" id="subRecipeRows" aria-live="polite"></div>
         </section>
       </form>
 
@@ -83,62 +54,172 @@
             <div>
               <p class="eyebrow">Live Output</p>
               <h2 id="summaryTitle">Recipe Summary</h2>
-              <p class="muted">This side will become the live cost and nutrition panel.</p>
+              <p class="muted">Live cost, nutrition, selling value, and batch totals update as you build.</p>
             </div>
           </div>
 
-          <div class="output-groups summary-placeholder-groups">
-            <section class="output-group" aria-labelledby="recipeTotalsTitle">
-              <h3 id="recipeTotalsTitle">Per Recipe</h3>
-              <div class="summary-grid" id="recipeTotalsGrid"></div>
-            </section>
+          <div class="summary-stack">
             <section class="output-group" aria-labelledby="servingTotalsTitle">
-              <h3 id="servingTotalsTitle">Per Serving</h3>
+              <div>
+                <p class="eyebrow">Per Serving</p>
+                <h3 id="servingTotalsTitle">Serving Breakdown</h3>
+              </div>
               <div class="summary-grid" id="servingTotalsGrid"></div>
             </section>
-          </div>
 
-          <section class="adjust-section compact-adjust" aria-labelledby="scalerTitle">
-            <div class="subsection-heading">
-              <div>
-                <p class="eyebrow">Scale</p>
-                <h3 id="scalerTitle">Adjust Serving</h3>
+            <section class="output-group" aria-labelledby="sellingTitle">
+              <div class="summary-block-head">
+                <div>
+                  <p class="eyebrow">Selling</p>
+                  <h3 id="sellingTitle">Price and Margin</h3>
+                </div>
+                <label class="summary-input-field">
+                  Selling price
+                  <input id="sellingPriceInput" type="number" min="0" step="0.01" placeholder="0.00">
+                </label>
               </div>
-              <button class="secondary-button" id="resetScaleButton" type="button">Reset</button>
-            </div>
+              <div class="summary-grid" id="sellingTotalsGrid"></div>
+            </section>
 
-            <div class="scale-controls">
-              <label>
-                Servings
-                <input id="targetServings" type="number" min="1" step="1">
-              </label>
-              <label>
-                Grams per serving
-                <input id="targetServingGrams" type="number" min="0" step="1">
-              </label>
-            </div>
-            <p class="muted" id="scaleHelp">Change either value to see the ingredient amounts needed for the new batch.</p>
-            <div class="scaled-table-wrap">
-              <table class="scaled-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Ingredient</th>
-                    <th scope="col">Amount</th>
-                  </tr>
-                </thead>
-                <tbody id="scaledRows"></tbody>
-              </table>
-            </div>
-          </section>
+            <section class="output-group" aria-labelledby="batchTitle">
+              <div class="summary-block-head">
+                <div>
+                  <p class="eyebrow">Batch</p>
+                  <h3 id="batchTitle">Batch Outcome</h3>
+                </div>
+                <label class="summary-input-field">
+                  Batch size
+                  <input id="targetServings" type="number" min="1" step="1">
+                </label>
+              </div>
+              <input id="targetServingGrams" type="hidden">
+              <div class="summary-grid" id="batchTotalsGrid"></div>
+              <p class="muted" id="scaleHelp">Scaled ingredient totals for this batch.</p>
+              <div class="scaled-table-wrap">
+                <table class="scaled-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Component</th>
+                      <th scope="col">Amount Needed</th>
+                    </tr>
+                  </thead>
+                  <tbody id="scaledRows"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
         </div>
       </aside>
     </main>
+
+    <template id="componentRowTemplate">
+      <article class="component-row ingredient-row" data-expanded="false" data-component-type="ingredient">
+        <div class="ingredient-row-main component-row-main">
+          <button class="expand-ingredient expand-component" type="button" aria-label="Expand component">+</button>
+          <div class="component-row-summary">
+            <div class="autocomplete-field ingredient-name-field component-name-field">
+              <input class="ingredient-name component-name" type="text" placeholder="Component" autocomplete="off">
+              <small class="ingredient-ghost-suggestion component-ghost-suggestion" hidden></small>
+              <div class="component-badges">
+                <small class="component-type-pill">Ingredient</small>
+                <small class="ingredient-library-state component-library-state" hidden>Custom ingredient</small>
+              </div>
+              <div class="autocomplete-list component-suggestions" hidden></div>
+            </div>
+          </div>
+          <div class="component-edit-controls">
+            <div class="amount-entry component-amount-entry">
+              <input class="ingredient-quantity component-quantity" type="number" min="0" step="any" placeholder="0" aria-label="Amount">
+              <small class="amount-note component-amount-note">0 g total</small>
+            </div>
+            <select class="ingredient-unit component-unit" aria-label="Component unit"></select>
+          </div>
+          <div class="component-row-actions">
+            <strong class="ingredient-cost component-cost">-</strong>
+            <button class="icon-button remove-ingredient remove-component" type="button" aria-label="Remove component">x</button>
+          </div>
+        </div>
+
+        <div class="ingredient-details component-details" hidden>
+          <div class="component-ingredient-details">
+            <div class="component-detail-header">
+              <h4>Cost and nutrition details</h4>
+              <p class="muted">Optional fields for pricing and nutrition.</p>
+            </div>
+            <div class="component-detail-grid">
+              <label>
+                Grams per unit
+                <input class="ingredient-grams-per-unit component-grams-per-unit" type="number" min="0.01" step="any" value="1">
+              </label>
+              <label>
+                Price / 100g
+                <input class="ingredient-price component-price" type="number" min="0" step="0.01" placeholder="Optional">
+              </label>
+              <label>
+                Calories / 100g
+                <input class="ingredient-calories component-calories" type="number" min="0" step="0.01" placeholder="0">
+              </label>
+              <label>
+                Protein / 100g
+                <input class="ingredient-protein component-protein" type="number" min="0" step="0.01" placeholder="0">
+              </label>
+              <label>
+                Carbs / 100g
+                <input class="ingredient-carbs component-carbs" type="number" min="0" step="0.01" placeholder="0">
+              </label>
+              <label>
+                Fat / 100g
+                <input class="ingredient-fat component-fat" type="number" min="0" step="0.01" placeholder="0">
+              </label>
+            </div>
+            <div class="component-detail-footer">
+              <button class="secondary-button save-ingredient save-component-ingredient" type="button">Save ingredient</button>
+              <p class="ingredient-data-status component-data-status">Cost and nutrition can be added later.</p>
+            </div>
+          </div>
+
+          <div class="component-recipe-details" hidden>
+            <div class="component-detail-header">
+              <h4>Recipe details</h4>
+              <p class="muted">Use servings and nested components to define this recipe.</p>
+            </div>
+            <div class="component-recipe-meta">
+              <label>
+                Recipe name
+                <input class="component-recipe-name" type="text" placeholder="Recipe name">
+              </label>
+              <label>
+                Servings in recipe
+                <input class="component-recipe-servings" type="number" min="1" step="1" value="1">
+              </label>
+            </div>
+            <div class="component-recipe-workspace">
+              <div class="component-recipe-head" aria-hidden="true">
+                <span></span>
+                <span>Ingredient</span>
+                <span>Amount</span>
+                <span>Unit</span>
+                <span>Cost</span>
+                <span></span>
+              </div>
+              <div class="nested-ingredient-rows" aria-live="polite"></div>
+              <button class="add-text-button nested-add-ingredient" type="button">+ Add Ingredient</button>
+            </div>
+          </div>
+        </div>
+      </article>
+    </template>
 
     <template id="ingredientRowTemplate">
       <article class="ingredient-row" data-expanded="false">
         <div class="ingredient-row-main">
           <button class="expand-ingredient" type="button" aria-label="Expand ingredient">+</button>
-          <input class="ingredient-name" type="text" list="savedIngredientNames" placeholder="Ingredient">
+          <div class="autocomplete-field ingredient-name-field">
+            <input class="ingredient-name" type="text" placeholder="Ingredient" autocomplete="off">
+            <small class="ingredient-ghost-suggestion" hidden></small>
+            <small class="ingredient-library-state" hidden>Custom ingredient</small>
+            <div class="autocomplete-list" hidden></div>
+          </div>
           <div class="amount-entry">
             <input class="ingredient-quantity" type="number" min="0" step="any" placeholder="0" aria-label="Amount">
             <small class="amount-note">0 g total</small>
@@ -174,6 +255,7 @@
             <input class="ingredient-fat" type="number" min="0" step="0.01" placeholder="0">
           </label>
           <button class="secondary-button save-ingredient" type="button">Save ingredient</button>
+          <p class="ingredient-data-status">Cost and nutrition can be added later.</p>
         </div>
       </article>
     </template>
